@@ -1,2 +1,2 @@
 # challenge1
-chanllenge tasks group 1
+challenge tasks group 1
