@@ -11,24 +11,15 @@ using namespace std;
 
 mutex g_general_mutex;
 
-// Obtaining the lock directly, without guard
-/*
+// Obtaining the lock via lock_guard
 void backgroud_thread_entry(void)
 {
-    g_general_mutex.lock();
-    cout << "thread2: Lock obtained by backgroud thread." << endl;
-    sleep(5);
-    cout << "thread2: sleep(5) is over." << endl;
-    g_general_mutex.unlock();
-}
-*/
+    //sleep(4); // Uncomment, if main should get the lock first
 
-void backgroud_thread_entry(void)
-{
     mod_locking::lock_guard<mutex> lock(g_general_mutex);
-    cout << "thread2: Lock obtained by backgroud thread." << endl;
+    cout << "thread2: Lock obtained." << endl;
     sleep(5);
-    cout << "thread2: sleep(5) is over." << endl;
+    cout << "thread2: sleep(5) is over. releasing lock" << endl;
 }
 
 int main()
@@ -41,11 +32,15 @@ int main()
     {
         mod_locking::lock_guard<mutex> lock(g_general_mutex);
         cout << "main: Lock obtained." << endl;
-        // Do something useful
 
+        // Check, whether mutex is locked
         assert(false == g_general_mutex.try_lock());
 
-        //g_general_mutex.lock(); // LANJ: would block
+        // Do something useful
+        sleep(3);
+        cout << "main: sleep(2) is over. releasing lock" << endl;
+
+        //g_general_mutex.lock(); // LANJ: would block forever for "normal" mutex
         //cout << "Lock obtained 2nd time" << endl;
     }
 
