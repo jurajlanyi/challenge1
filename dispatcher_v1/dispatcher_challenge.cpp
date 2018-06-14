@@ -3,6 +3,9 @@
 #include <string>
 #include <iostream>
 
+#include <list>
+#include <fstream>
+
 #include <functional>
 
 //
@@ -28,6 +31,25 @@
 using namespace rapidjson;
 using namespace std;
 
+// Define this if you want to use MyList<int> instead of std::list<int>
+//#define USE_LINKED_LIST
+
+#ifdef USE_LINKED_LIST
+
+#include "linked_list.h"
+
+#else
+std::ostream& operator<< (std::ostream &out, list<int> &intList) // Pretty print
+{
+    int n = 1;
+    out << "List size is " << intList.size() << " items:" << endl;
+    for(auto item : intList) {
+        out << "Item " << n++ << "= " << item << endl;
+    }
+    return out;
+}
+#endif
+
 bool g_done = false;
 
 //
@@ -48,6 +70,18 @@ auto exit_command = R"(
   "command":"exit",
   "payload": {
      "reason":"Exiting program on user request."
+  }
+ }
+)";
+
+// TODO: extend implementation with more actions
+auto list_test_command = R"(
+ {
+  "command":"list_test",
+  "payload": {
+   "init": [7, 4, 0, 8, 3, 1, 6, 2, 5, 6],
+   "action" : "sort",
+   "output" : "list_test.out"
   }
  }
 )";
@@ -81,6 +115,52 @@ public:
         }
         cout << "Program exit, reason: " << strExitReason << endl;
         g_done = true;
+        return true;
+    }
+
+// TODO: extend implementation with more actions type and multiple actions
+    bool list_test(rapidjson::Value &payload)
+    {
+        cout << "Controller::list_test: command: \n";
+
+        if (!payload.HasMember("init") || !payload["init"].IsArray()) {
+            cout << "No init array found" << endl;
+            return false;
+        }
+        if (!payload.HasMember("output") || !payload["output"].IsString()) {
+            cout << "No output string found" << endl;
+            return false;
+        }
+        if (!payload.HasMember("action") || !payload["action"].IsString()) {
+            cout << "No action string found" << endl;
+            return false;
+        }
+
+        const Value& array = payload["init"];
+#ifndef USE_LINKED_LIST
+        std::list<int> intList;
+#else
+        MyList<int> intList;
+#endif
+        for (SizeType i = 0; i < array.Size(); i++) {
+            int iValue = array[i].GetInt();
+            intList.push_back(iValue);
+        }
+        string action = payload["action"].GetString();
+
+        if (action == "sort") {
+            intList.sort();
+        }
+
+        string outputFilename = payload["output"].GetString();
+        std::ofstream ofs;
+        ofs.open(outputFilename, std::ofstream::out | std::ofstream::trunc);
+        if (ofs.is_open()) {
+            ofs << intList;     // Pretty print :-)
+            ofs.close();
+        }
+
+        cout << "list_test exit, result written to file: " << outputFilename << endl;
         return true;
     }
 
@@ -205,6 +285,9 @@ void Controller::registerHandlers(CommandDispatcher& dispatcher)
 
     handler = std::bind(&Controller::exit, this, placeholders::_1);
     dispatcher.addCommandHandler("exit", handler);
+
+    handler = std::bind(&Controller::list_test, this, placeholders::_1);
+    dispatcher.addCommandHandler("list_test", handler);
 }
 
 int main()
@@ -246,7 +329,7 @@ int main()
         command.clear();
 
 /*
-        // allow plain commands from cmd line
+        // allow plain commands from cmd line - not needed anymore
         if (!is_json_command)
             command_dispatcher.dispatchCommand(command);
 */
