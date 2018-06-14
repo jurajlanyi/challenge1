@@ -31,8 +31,9 @@ using namespace std;
 bool g_done = false;
 
 //
-// TEST COMMANDS
+// TEST COMMANDS - just copy and paste including outer {}
 //
+
 auto help_command = R"(
  {
   "command":"help",
@@ -53,28 +54,33 @@ auto exit_command = R"(
 
 
 class CommandDispatcher; // fwd declaration
-// lanj - todo - parse payload, do something reasonable
 
 class Controller {
 public:
     bool help(rapidjson::Value &payload)
     {
-        cout << "Controller::help: command: ";
+        // LANJ: if usage is found, just display
+        // if document is gived, start document viewer
 
-        // implement
-
+        cout << "Controller::help: command \n";
+        if (payload.HasMember("usage")) {
+            string strUsage = payload["usage"].GetString();
+            cout << "Help instruction: Usage is" << endl << strUsage << endl << "Help end." << endl;
+        }
         return true;
     }
 
     bool exit(rapidjson::Value &payload)
     {
+        // LANJ: reason could be logged into system log, ...
+
         cout << "Controller::exit: command: \n";
-
-        // implement
-
-//        g_done = true; // LANJ - commented our for some check
-#pragma message ("TODO : LANJ - g_done = true")
-
+        string strExitReason = "unspecified";
+        if (payload.HasMember("reason")) {
+            strExitReason = payload["reason"].GetString();
+        }
+        cout << "Program exit, reason: " << strExitReason << endl;
+        g_done = true;
         return true;
     }
 
@@ -94,6 +100,7 @@ public:
     // ctor - need impl
     CommandDispatcher()
     {
+        // LANJ: ctor implementation not needed
     }
 
     // dtor - need impl
@@ -104,6 +111,10 @@ public:
         // LANJ - not needed here
         // it depends whether we derive another class from it and then use base class pointer and destruct the object so
         // it is wiser to have it virtual
+
+        // LANJ: dtor implementation not needed, unless there is some specific about:
+        // handler = std::bind(&Controller::help, this, placeholders::_1);
+        // TODO - study docs
     }
 
     bool addCommandHandler(std::string command, CommandHandler handler)
@@ -116,11 +127,12 @@ public:
 
     bool dispatchCommand(std::string command_json)
     {
-        cout << "COMMAND: " << command_json << endl;
+        cout << "dispatchCommand:COMMAND:" << endl;
 
-        // LANJ TODO - this has to be parsed/checked first !
         Document jsonDoc;
         ParseResult jsonOK = jsonDoc.Parse(command_json.c_str());
+        if (!jsonOK)
+            return false;
 
         if (!jsonDoc.HasMember("command")) {
             cout << "Error: No command member found in JSON" << endl;
@@ -135,37 +147,28 @@ public:
             return false;
         }
         string command_member = jsonDoc["command"].GetString();
-        rapidjson::Value& value = jsonDoc["payload"];
-
-        // get command and payload
-        // implement
-        // lanj todo - parse PAYLOAD
+        rapidjson::Value& payload = jsonDoc["payload"];
 
         HandlerMap::iterator it;
         it = command_handlers_.find(command_member);
         if (it != command_handlers_.end()) {
-            cout << "COMMAND: activating " << command_member << endl;
+            cout << "COMMAND: activating command '" << command_member << "'" << endl;
             CommandHandler handler = it->second;
+            bool retValue = handler(payload);   // LANJ: Exceptions possible ? Handling, etc ...
+            cout << "Command Handler returned, return value: " << retValue << endl;
 
-#pragma message ("TODO : LANJ - what about payload/value ?")
-
-//            rapidjson::Value value;
-            handler(value);
+#pragma message ("TODO : LANJ - what to do with returned payload/value ?")
             // LANJ: TODO - what about return values/data ?
-//            cout << "VALUE is : " << value.GetString() << endl;
-//            cout << "VALUE is : " << value.GetObject() << endl;
-
+            // payload is of Value type and could be altered inside command handler
+            // for now just display it
             StringBuffer buffer;
             Writer<StringBuffer> writer(buffer);
-// payload is of Value type and could be altered in command handler
-            value.Accept(writer); // write JSON value to a string
-
-            cout << "Buffer: - return JSON object" << buffer.GetString() << endl;
-
-            //const char* output = buffer.GetString();
+            payload.Accept(writer); // write JSON value to a string
+//            cout << "Command handler returned JSON payload: " << buffer.GetString() << endl; // lengthy string, don't display
+            cout << "Command handler returned JSON payload: " << "\"some long string\"" << endl;
         }
         else {
-            cout << "Command handler not found error" << endl;
+            cout << "Error: Command handler '" << command_member << "' not found" << endl;
         }
 
         return true;
@@ -178,7 +181,8 @@ private:
 
     // another gimme ...
     // Question: why delete these?
-// LANJ - to prevent creating copy objects and copying dispatcher
+
+    // LANJ - to prevent creating copy objects and copying dispatcher
 // because we store CommandHandler's they are similar to function pointers,
 // and in this case they point to Controller object.
 // Controller object should be in same scope as CommandDispatcher obect
@@ -191,12 +195,11 @@ private:
 
 void Controller::registerHandlers(CommandDispatcher& dispatcher)
 {
-    // maybe this could be done programatically by iterating Controller methods
+    // LANJ: maybe this could be done programatically by iterating Controller methods
 
-    //CommandHandler handler = std::bind(Controller::help, this, placeholders::_1);
     CommandHandler handler;
 
-    // what about error checking ?
+    // what about error checking, like duplicate handler, or multiple handlers for the same command ?
     handler = std::bind(&Controller::help, this, placeholders::_1);
     dispatcher.addCommandHandler("help", handler);
 
@@ -207,8 +210,6 @@ void Controller::registerHandlers(CommandDispatcher& dispatcher)
 int main()
 {
     std::cout << "COMMAND DISPATCHER: STARTED" << std::endl;
-
-    cout << help_command << endl;
 
     CommandDispatcher command_dispatcher;
     Controller controller;                 // controller class of functions to "dispatch" from Command Dispatcher
@@ -225,8 +226,13 @@ int main()
 
     while( ! g_done ) {
         if (command.empty()) {
-            cout << "COMMANDS: {\"command\":\"exit\", \"payload\":{\"reason\":\"User requested exit.\"}}\n";
-            cout << "\tenter command : ";
+            cout << endl << "COMMANDS: {\"command\":\"exit\", \"payload\":{\"reason\":\"User requested exit.\"}}\n";
+            cout << "COMMANDS: TODO - show all commands ?\n";
+            cout << "\tenter command (or Ctrl-Z): ";
+        }
+        if (cin.eof()) {
+            cout << "Input EOF, terminating" << endl;
+            break;
         }
         getline(cin, inputLine);
         command += inputLine;
@@ -240,7 +246,7 @@ int main()
         command.clear();
 
 /*
-        // plain commands from cmd line
+        // allow plain commands from cmd line
         if (!is_json_command)
             command_dispatcher.dispatchCommand(command);
 */
