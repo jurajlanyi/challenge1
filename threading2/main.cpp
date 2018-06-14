@@ -20,11 +20,12 @@ typedef int task_id;
 // START block - protected by g_general_mutex
 mutex g_general_mutex;                                      // Variables below should be modified only by mutex owner
 condition_variable g_general_condvar;                       // Threads wait on this condvar
-task_id work_for_thread;                                    // Indicates, which thread should do next job
+task_id work_for_thread = TASK_MAIN;                        // Indicates, which thread should do next job
 int threads_ready = 0;                                      // Count of worker threads ready
 // END block - protected by g_general_mutex
 
 // LANJ - TODO: consider alternate implementation with dedicated condvar instance for each thread
+// This could have significant performance impact, as less threads would be waken up
 
 sig_atomic_t g_b_terminate = 0;                             // Is set to 1 by SIGINT signal handler. All worker threads should finish ASAP
 
@@ -47,12 +48,11 @@ void worker_thread_main(task_id my_task_id)
     g_general_condvar.notify_all();
 
     while (1)
-    {
-        g_general_condvar.wait(lock);
+    {   // LANJ: CHANGE: if work_for_thread == my_task_id the thread will not wait on condvar
+        while ((!g_b_terminate) && (work_for_thread != my_task_id))
+            g_general_condvar.wait(lock);
         if (g_b_terminate)
             break;
-        if (work_for_thread != my_task_id)
-            continue;
 
         cout << "worker" << my_task_id << ": Signal received, doing work ..." << endl;
 
@@ -103,9 +103,9 @@ int main()
         sleep(1);
         cycle_cnt++;
         cout << "main: cycle_cnt is " << cycle_cnt << endl;
-        if (cycle_cnt >= 60) {                                    // After 60 iterations stop worker threads
+        if (cycle_cnt >= 60) {                              // After 60 iterations stop worker threads
             g_b_terminate = 1;
-            g_general_condvar.notify_all();                         // LANJ: can signal without mutex lock()
+            g_general_condvar.notify_all();                 // LANJ: can signal without mutex lock()
             break;
         }
     }
