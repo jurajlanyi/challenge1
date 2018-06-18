@@ -18,3 +18,36 @@ https://answers.microsoft.com/en-us/windows/forum/windows_7-security/uac-prompts
 https://github.com/bmatzelle/gow/issues/156
 
 https://math.nist.gov/oommf/software-patchsets/patch_on_Windows7.html
+
+----
+
+
+JSON commands for copy & paste
+
+nr1
+{
+	"command": "help",
+	"payload": {
+		"usage": "Enter json command in 'command':'<command>','payload': { // json payload of arguments }"
+	}
+}
+
+nr2
+
+ {
+  "command":"exit",
+  "payload": {
+     "reason":"Exiting program on user request."
+  }
+ }
+
+nr3b
+
+ {
+  "command":"list_test",
+  "payload": {
+   "init": [7,4,1,7,1,2,3,211,112,113,17,24,10,28,13,21,222,-6,2,15,6,99,5,4,7,7,4,1,7,1],
+   "action" : "sort",
+   "output" : "list_test.out"
+  }
+ }
