@@ -32,7 +32,8 @@ using namespace rapidjson;
 using namespace std;
 
 // Define this if you want to use MyList<int> instead of std::list<int>
-//#define USE_LINKED_LIST
+// linked_list.cpp and linked_list.h must be includable
+#define USE_LINKED_LIST
 
 #ifdef USE_LINKED_LIST
 
@@ -237,7 +238,7 @@ public:
             bool retValue = handler(payload);   // LANJ: Exceptions possible ? Handling, etc ...
             cout << "Command Handler returned, return value: " << retValue << endl;
 
-#pragma message ("TODO : LANJ - what to do with returned payload/value ?")
+#pragma message "TODO : LANJ - what to do with returned payload/value ?"
             // LANJ: TODO - what about return values/data ?
             // payload is of Value type and could be altered inside command handler
             // for now just display it
